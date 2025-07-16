@@ -4,12 +4,13 @@ import mechanize
 import random
 import requests
 
-# Globals, enter your own credentials
-API_KEY =       ''
-STEAM_ID =      ''
-USERNAME =      ''
-PRETTY_PRINT =  False
-
+PRETTY_PRINT = False
+REQUEST_HLTB = False
+with open('settings.json') as f:
+    data = json.load(f)
+    API_KEY = data['API_KEY']
+    STEAM_ID = data['STEAM_ID']
+    USERNAME = data['USERNAME']
 
 # Query the Steam Web API for the list of owned games given an API key and a Steam ID
 def getOwnedGames(apiKey, steamID):
@@ -26,7 +27,7 @@ def getOwnedGames(apiKey, steamID):
 
     # Pretty print
     if PRETTY_PRINT:
-        print json.dumps(response['games'], indent=2, sort_keys=True)
+        print(json.dumps(response['games'], indent=2, sort_keys=True))
     return response, gameNames
 
 
@@ -46,6 +47,7 @@ def getHowLongToBeatHTML(username):
     br.set_handle_robots(True)
 
     # Open URL
+    # BROKEN
     br.open('https://howlongtobeat.com/steam.php')
 
     # Select the username field (index 0 is the search bar)
@@ -80,7 +82,7 @@ def parseTable(html):
     # Pretty print
     if PRETTY_PRINT:
         for key in parsedTable.keys():
-            print "{0:<70} {1}".format(key, parsedTable[key])
+            print("{0:<70} {1}".format(key, parsedTable[key]))
 
     return parsedTable
 
@@ -88,16 +90,18 @@ def parseTable(html):
 # Convert games list from SteamAPI response to just game names and total playtime
 def gamesToPlaytime(data):
     started, unstarted = {}, {}
+    sum = 0
 
     for game in data['games']:
         if game['playtime_forever'] > 0:
             # I have at least 1 minute tracked on Steam
             started[game['name'].encode('utf-8')] = game['playtime_forever']
+            sum += game['playtime_forever']
         else:
             # I have never launched this game
             unstarted[game['name'].encode('utf-8')] = game['playtime_forever']
 
-    return started, unstarted
+    return started, unstarted, sum
 
 
 # Convert "##h ##m" to minutes
@@ -150,7 +154,7 @@ def selectRandomStartedGame(playTime, hoursLeft):
         if gameName in playTime and playTime[gameName] > hoursLeft[gameName]:
             playTime.pop(gameName)
 
-    print "Finish a game!\t\t", random.choice(list(playTime))
+    print("Finish a game!\t\t", random.choice(list(playTime)))
     return
 
 
@@ -161,19 +165,30 @@ def selectRandomUnstartedGame(playTime, hoursLeft):
         if hoursLeft[gameName] == -1:
             playTime.pop(gameName, None)
 
-    print "Play a new game!\t", random.choice(list(playTime))
+    print("Play a new game!\t", random.choice(list(playTime)))
     return
+
+
+def printPlaytime(time: int):
+    minutes = time % 60
+    hours = round(time / 60) % 24
+    days = round(time / 60 / 24)
+
+    print("All playtime:", days, "days", hours, "hours", minutes, "minutes")
 
 
 def main():
     steamGames, gameNames = getOwnedGames(API_KEY, STEAM_ID)
 
-    started, unstarted = gamesToPlaytime(steamGames)
-    hoursLeft = hltbTimeToMinutes(parseTable(getHowLongToBeatHTML(USERNAME)))
+    started, unstarted, sum = gamesToPlaytime(steamGames)
+    printPlaytime(sum)
 
-    selectRandomStartedGame(started, hoursLeft)
-    print  # Add an extra line
-    selectRandomUnstartedGame(unstarted, hoursLeft)
+    if REQUEST_HLTB:
+        hoursLeft = hltbTimeToMinutes(parseTable(getHowLongToBeatHTML(USERNAME)))
+
+        selectRandomStartedGame(started, hoursLeft)
+        print  # Add an extra line
+        selectRandomUnstartedGame(unstarted, hoursLeft)
 
 
 main()

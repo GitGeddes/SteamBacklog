@@ -2,7 +2,7 @@
 
 Using the Steam Web API and HowLongToBeat.com, pick a random game to finish and a random game to begin.
 
-#### You need to modify the main.py code and add your own Steam API key, your Steam Community ID number, and your Steam Username
+#### You need to modify settings.json and add your own Steam API key, your Steam Community ID number, and your Steam Username
 Your Steam username can be anything that works with the HowLongToBeat link below.
 *Also, your games library needs to be public on Steam for this script to work.*
 
